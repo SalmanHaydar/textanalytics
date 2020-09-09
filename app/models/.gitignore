@@ -1,4 +1,4 @@
 !.gitkeep
 !.gitignore
-*.pkl
-*.pt
+.*.pickle
+.*.pt
