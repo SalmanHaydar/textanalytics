@@ -23,8 +23,29 @@ from datetime import datetime
 
 import uvicorn
 
+from sqlalchemy.orm import Session
+from .db import crud, schemas, models
+from .db.database import sessionLocal, engine
+
+import subprocess as sp
+from datetime import datetime
+from dateutil import parser
+
+
+oauth2_schema = OAuth2PasswordBearer(tokenUrl="token")
+
+models.Base.metadata.create_all(bind=engine)
+
 app = FastAPI()
 print(__name__)
+
+def get_db():
+    db = sessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 #*********************************************************************************
 
 
@@ -99,3 +120,15 @@ async def get_results(text:str=Query(...), uid:str=Query(None), pgid:str=Query(N
     payload["DateTime"] = str(datetime.now())
     
     return payload
+
+@app.post("/api/v1/insertdata", response_model=schemas.InsertBase)
+def insert_intodb(row_: schemas.InsertBase, db: Session = Depends(get_db)):
+    return crud.insert_data(db, row_)
+
+@app.get("/api/v1/getuser", response_model=List[schemas.InsertBase])
+def get_user(uid:int, db: Session = Depends(get_db)):
+    return crud.get_user(db, uid)
+
+@app.get("/api/v1/gettimedata", response_model=List[schemas.InsertBase])
+def get_time_data(uid: str, pgid: str, frm: str, to: str=None , db: Session = Depends(get_db)):
+    return crud.get_data_by_date(db, uid, pgid, parser.parse(frm))
