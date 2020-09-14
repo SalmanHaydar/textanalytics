@@ -2,7 +2,7 @@ from typing import Optional, List
 from enum import Enum
 from pydantic import BaseModel, EmailStr, Field
 
-from fastapi import FastAPI, Body, Depends, File, Form, HTTPException, status, UploadFile, Path, Query
+from fastapi import FastAPI, Body, Depends, File, Form, HTTPException, Request, status, UploadFile, Path, Query
 from fastapi.responses import HTMLResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -20,23 +20,24 @@ from .piModel import AttentionModelPI, infer_pi
 import pickle
 import os
 from datetime import datetime
+import requests
 
 import uvicorn
 
 from sqlalchemy.orm import Session
 from .db import crud, schemas, models
 from .db.database import sessionLocal, engine
+from .process import get_summary, get_VisData
 
 import subprocess as sp
 from datetime import datetime
 from dateutil import parser
 
 
-oauth2_schema = OAuth2PasswordBearer(tokenUrl="token")
-
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
 print(__name__)
 
 def get_db():
@@ -45,6 +46,19 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def get_db2():
+    db = sessionLocal()
+    try:
+        return db
+    except:
+        db.close()
+
+def pushindb(row_: schemas.InsertBase):
+    db = get_db2()
+    db.close()
+    return crud.insert_data(row_, db)
+
 
 #*********************************************************************************
 
@@ -92,7 +106,8 @@ except FileNotFoundError as e:
 
 
 @app.get("/api/v1/analysis")
-async def get_results(text:str=Query(...), uid:str=Query(None), pgid:str=Query(None)):
+async def get_results(request: Request, text:str=Query(...), uid:str=Query(None), pgid:str=Query(None)):
+
     payload = {"api_version": '0.0.1', 
                "DateTime": "", 
                "text": text,
@@ -102,33 +117,71 @@ async def get_results(text:str=Query(...), uid:str=Query(None), pgid:str=Query(N
                         }
                }
     
+    db_payload = schemas.InsertBase().dict()
+
+    db_payload["text"]=text
+    db_payload["uid"]=uid
+    db_payload["pgid"]=pgid
+
     r, p = infer_sentiment(text, stok, smod)
-    # payload["sentiment"] = r
     payload["models"]["sentiment"]["value"]=r
-    # payload["models"]["sentiment"]["probs"]=np.array(p[0])
+    db_payload[r.lower()] = 1
     
     r, p = infer_query(text, qtok, qmod)
-    # payload["genCategory"]=r
     payload["models"]["genCategory"]["value"]=r
-    # payload["models"]["genCategory"]["probs"]=np.array(p[0])
+    db_payload[r.lower()] = 1
     
     r, p = infer_pi(text, ptok, pmod)
-    # payload["busIntention"]=r
     payload["models"]["busIntention"]["value"]=r
-    # payload["models"]["busIntention"]["probs"]=np.array(p[0])
+    db_payload[r.lower()] = 1
     
     payload["DateTime"] = str(datetime.now())
+    db_payload["time"] = str(datetime.now())
+
+    if uid != None and pgid != None:
+        resp = pushindb(db_payload)
     
     return payload
 
-@app.post("/api/v1/insertdata", response_model=schemas.InsertBase)
+@app.post("/api/v1/pushdata", response_model=schemas.InsertBase)
 def insert_intodb(row_: schemas.InsertBase, db: Session = Depends(get_db)):
-    return crud.insert_data(db, row_)
+    return crud.insert_data(row_, db)
 
-@app.get("/api/v1/getuser", response_model=List[schemas.InsertBase])
-def get_user(uid:int, db: Session = Depends(get_db)):
-    return crud.get_user(db, uid)
+@app.get("/api/v1/getUserDataForVisAll")
+def get_user(uid:int, pgid:str, rawdata:bool = False, db: Session = Depends(get_db)):
+    rows = crud.get_user(db, uid, pgid)
+    if rawdata:
+        return rows
 
-@app.get("/api/v1/gettimedata", response_model=List[schemas.InsertBase])
-def get_time_data(uid: str, pgid: str, frm: str, to: str=None , db: Session = Depends(get_db)):
-    return crud.get_data_by_date(db, uid, pgid, parser.parse(frm))
+    row = get_VisData(rows)
+    return row
+
+@app.get("/api/v1/getUserDataForVisTimeRange")
+def get_time_data(uid: str, pgid: str, frm: str, to: str=None, rawdata:bool = False, db: Session = Depends(get_db)):
+    rows = crud.get_data_by_date(db, uid, pgid, parser.parse(frm), parser.parse(to))
+    if rawdata:
+        return rows
+
+    row = get_VisData(rows)
+
+    return row
+
+@app.get("/api/v1/getPageDataForVisAll")
+def get_time_data(pgid: str, rawdata:bool = False, db: Session = Depends(get_db)):
+    rows = crud.get_page_data_all(db, pgid)
+    if rawdata:
+        return rows
+
+    row = get_VisData(rows)
+
+    return row
+
+@app.get("/api/v1/getPageDataForVisTimeRange")
+def get_time_data(pgid: str, frm: str, to: str=None, rawdata:bool = False, db: Session = Depends(get_db)):
+    rows = crud.get_page_data_by_date(db, pgid, parser.parse(frm), parser.parse(to))
+    if rawdata:
+        return rows
+        
+    row = get_VisData(rows)
+
+    return row

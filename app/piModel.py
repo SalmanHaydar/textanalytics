@@ -103,7 +103,7 @@ def clean_dataset(texts: list, max_sq_len=100, tok=None, ngram=True, num_voc=200
     return padded_seq, clean_texts, tok
 
 def infer_pi(s, tok, model):
-    flag_ = {0:"Purchase Intention",1:"No Purchase Intention"}
+    flag_ = {0:"PI",1:"NOT_PI"}
     
     padded_data, _,t = clean_dataset([s],100,tok,ngram=True)
     tensor = torch.from_numpy(padded_data).type(torch.LongTensor)
