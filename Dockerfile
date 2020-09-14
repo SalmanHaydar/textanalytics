@@ -7,6 +7,7 @@ RUN python -m pip install --upgrade pip
 RUN pip install -r requirements1.txt
 
 COPY requirements.txt .
+RUN python -m pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 COPY . .
