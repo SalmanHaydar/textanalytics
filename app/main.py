@@ -106,7 +106,7 @@ except FileNotFoundError as e:
 
 
 @app.get("/api/v1/analysis")
-async def get_results(request: Request, text:str=Query(...), uid:str=Query(None), pgid:str=Query(None)):
+async def get_results(text:str=Query(...), uid:str=Query(None), pgid:str=Query(None)):
 
     payload = {"api_version": '0.0.1', 
                "DateTime": "", 
@@ -181,7 +181,20 @@ def get_time_data(pgid: str, frm: str, to: str=None, rawdata:bool = False, db: S
     rows = crud.get_page_data_by_date(db, pgid, parser.parse(frm), parser.parse(to))
     if rawdata:
         return rows
-        
+
     row = get_VisData(rows)
 
     return row
+
+
+@app.get("/api/v1/getPages")
+def get_page_list(db: Session = Depends(get_db)):
+    rows = crud.get_all_pages(db)
+    
+    return rows
+
+@app.get("/api/v1/getUsers")
+def get_user_list(pgid: str, db: Session = Depends(get_db)):
+    rows = crud.get_all_userid(db, pgid)
+    
+    return rows

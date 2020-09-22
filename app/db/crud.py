@@ -26,3 +26,9 @@ def get_page_data_all(db: Session, pgid: str):
 
 def get_page_data_by_date(db: Session, pgid: str, frm: datetime, to: datetime):
     return db.query(models.Analytics).filter(models.Analytics.pgid == pgid).filter(models.Analytics.time >= frm).filter(to >= models.Analytics.time).all()
+
+def get_all_pages(db: Session):
+    return db.query(models.Analytics.pgid).distinct().all()
+
+def get_all_userid(db: Session, pgid: str):
+    return db.query(models.Analytics.uid).filter(models.Analytics.pgid == pgid).distinct().all()
