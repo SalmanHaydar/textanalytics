@@ -16,6 +16,7 @@ def insert_data(row: schemas.InsertBase, db: Session):
     db.add(row_)
     db.commit()
     db.refresh(row_)
+    db.close()
     return row_
 
 def get_data_by_date(db: Session, uid: str, pgid: str, frm: datetime, to: datetime):

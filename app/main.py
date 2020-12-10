@@ -56,7 +56,7 @@ def get_db2():
 
 def pushindb(row_: schemas.InsertBase):
     db = get_db2()
-    db.close()
+    #db.close()
     return crud.insert_data(row_, db)
 
 
@@ -148,7 +148,7 @@ def insert_intodb(row_: schemas.InsertBase, db: Session = Depends(get_db)):
     return crud.insert_data(row_, db)
 
 @app.get("/api/v1/getUserDataForVisAll")
-def get_user(uid:int, pgid:str, rawdata:bool = False, db: Session = Depends(get_db)):
+def get_user(uid:str, pgid:str, rawdata:bool = False, db: Session = Depends(get_db)):
     rows = crud.get_user(db, uid, pgid)
     if rawdata:
         return rows

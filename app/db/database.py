@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 SQL_DB_URL = 'mysql://root:genexdb2020@182.160.104.220:3306/Analytics'
 
-engine = create_engine(SQL_DB_URL)
+engine = create_engine(SQL_DB_URL,pool_size=20, max_overflow=30)
 
 sessionLocal = sessionmaker(autoflush=False, bind=engine)
 
